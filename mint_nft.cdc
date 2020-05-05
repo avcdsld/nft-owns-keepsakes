@@ -1,22 +1,24 @@
-// Sender: 0x01
-// NFT受取の準備を行う
+// Sender: 0x02
+// NFTを発行する（受取人: 0x01）
 
 import NonFungibleToken from 0x01
 import ExampleNFT from 0x02
 
 transaction {
+    let minter: &ExampleNFT.NFTMinter
+
     prepare(signer: AuthAccount) {
-        let collection <- ExampleNFT.createEmptyCollection()
+        self.minter = signer.borrow<&ExampleNFT.NFTMinter>(from: /storage/NFTMinter)!
+    }
 
-        // let oldCol <- signer.load<@ExampleNFT.Collection>(from: /storage/NFTCollection)
-        // destroy oldCol
+    execute {
+        let recipient = getAccount(0x01)
 
-        signer.save(<-collection, to: /storage/NFTCollection)
+        let receiver = recipient
+            .getCapability(/public/NFTReceiver)!
+            .borrow<&{NonFungibleToken.Receiver}>()!
 
-        signer.link<&{NonFungibleToken.Receiver, ExampleNFT.CollectionBorrow}>(
-            /public/NFTReceiver,
-            target: /storage/NFTCollection
-        )
+        self.minter.mintNFT(recipient: receiver)
 
         log("ok")
     }
